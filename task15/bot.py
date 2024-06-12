@@ -16,6 +16,7 @@ retries = Retry(total=5,
                 status_forcelist=[ 500, 502, 503, 504 ])
 
 s.mount('http://', HTTPAdapter(max_retries=retries))
+s.headers.update({'User-Agent': 'Mdann52 bot (https://en.wikipedia.org/wiki/User:Mdann52-bot; mailto:matthewdann52@gmail.com)'})
 
 directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -31,8 +32,6 @@ def run_bot():
     wikidata = pywikibot.Site("test", "wikidata") # ("wikidata", "wikidata")
     repo = wikidata.data_repository()
 
-    count = 0
-
     for item in TEMPLATES:
         template = pywikibot.Page(pywikibot.Link(item,
                                         default_namespace=10,
@@ -42,9 +41,6 @@ def run_bot():
 
         for page in transclusions:
             logger.info("Processing %s", page.title())
-            if count == 0:
-                count = 1
-                continue
 
             wikitext = mwparserfromhell.parse(page.text)
             templates = wikitext.filter_templates(recursive=False)
@@ -69,11 +65,14 @@ def run_bot():
                             data[callsign] = res.json()
                         else:
                             logger.error("Cannot get data for %s, received error %i", callsign, res.status_code)
-                            break
+                            continue
 
                     if data[callsign]["message"] == "No Facility Found":
                         logger.warning("Facility %s not found!", callsign)
-                        break
+                        # Handle as an external link as well
+                        wikitext.replace("*"+item, None)
+                        wikitext.replace(item, None)
+                        continue
 
                     new_template = str(item)
                         
