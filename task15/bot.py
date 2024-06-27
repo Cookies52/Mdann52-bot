@@ -8,6 +8,7 @@ import time
 from collections import OrderedDict
 import mwparserfromhell
 from requests.adapters import HTTPAdapter, Retry
+import re
 
 s = requests.Session()
 
@@ -26,8 +27,12 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                     level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler())
 
+Wikidata_Enabled = False
+
 TEMPLATES = ["AMQ", "FMQ", "AM station data", "FM station data"]
+
 def run_bot():
+    edits = 3
     enwiki = pywikibot.Site("en", 'wikipedia')
     wikidata = pywikibot.Site("test", "wikidata") # ("wikidata", "wikidata")
     repo = wikidata.data_repository()
@@ -40,6 +45,9 @@ def run_bot():
         transclusions = template.getReferences(only_template_inclusion=True)
 
         for page in transclusions:
+            if edits == 49:
+               os.exit(0)
+
             logger.info("Processing %s", page.title())
 
             wikitext = mwparserfromhell.parse(page.text)
@@ -70,8 +78,10 @@ def run_bot():
                     if data[callsign]["message"] == "No Facility Found":
                         logger.warning("Facility %s not found!", callsign)
                         # Handle as an external link as well
-                        wikitext.replace("*"+item, None)
-                        wikitext.replace(item, None)
+                        if wikitext.contains("*"+str(item)):
+                            wikitext = mwparserfromhell.parse(re.sub(r"\*[ ]*"+re.escape(str(item))+"\n", "", str(wikitext)))
+                        if wikitext.contains(item):
+                            wikitext = mwparserfromhell.parse(re.sub(re.escape(str(item))+"\n", "", str(wikitext)))
                         continue
 
                     new_template = str(item)
@@ -102,37 +112,38 @@ def run_bot():
                     else:
                         logger.warning("Unknown Template found : %s", new_template)
 
-                    wikitext.replace(item, new_template)
+                    wikitext.replace(str(item), new_template)
                     item = mwparserfromhell.parse(new_template)
 
             # Update Wikidata using values from FCC API
-            claims = wikidata_item.get()["claims"]
-            if 'P2144' in claims:
-                logger.warning("Claim for 'P2144' already exists, skipping")
-            else:
-                for f in frequency_list:
-                    freqclaim = pywikibot.Claim(repo, u'P2144') #Frequency
-                    freqclaim.setTarget(f)
-                    wikidata_item.addClaim(freqclaim, summary=u'Adding frequency from FCC API.')
+            if Wikidata_Enabled:
+                claims = wikidata_item.get()["claims"]
+                if 'P2144' in claims:
+                    logger.warning("Claim for 'P2144' already exists, skipping")
+                else:
+                    for f in frequency_list:
+                        freqclaim = pywikibot.Claim(repo, u'P2144') #Frequency
+                        freqclaim.setTarget(f)
+                        wikidata_item.addClaim(freqclaim, summary=u'Adding frequency from FCC API.')
 
-            if 'P2317' in claims:
-                logger.warning("Claim for 'P2317' already exists, skipping")
-            else:
-                callClaim = pywikibot.Claim(repo, u'P2317') #callsign
-                callClaim.setTarget(callsign)
-                wikidata_item.addClaim(callClaim, summary=u'Adding callsign from FCC API.')
+                if 'P2317' in claims:
+                    logger.warning("Claim for 'P2317' already exists, skipping")
+                else:
+                    callClaim = pywikibot.Claim(repo, u'P2317') #callsign
+                    callClaim.setTarget(callsign)
+                    wikidata_item.addClaim(callClaim, summary=u'Adding callsign from FCC API.')
 
-            if 'P1400' in claims:
-                logger.warning("Claim for 'P1400' already exists, skipping")
-            else:
-                idClaim = pywikibot.Claim(repo, u'P1400') #FCC ID
-                idClaim.setTarget(fccId)
-                wikidata_item.addClaim(idClaim, summary=u'Adding FCC ID from FCC API.')
+                if 'P1400' in claims:
+                    logger.warning("Claim for 'P1400' already exists, skipping")
+                else:
+                    idClaim = pywikibot.Claim(repo, u'P1400') #FCC ID
+                    idClaim.setTarget(fccId)
+                    wikidata_item.addClaim(idClaim, summary=u'Adding FCC ID from FCC API.')
             
             logger.info("Finished processing %s", page.title())
             if str(wikitext) != page:
-                page = str(wikitext)
-                page.save()
+                page.text = str(wikitext)
+                page.save(summary="[[Wikipedia:Bots/Requests for approval/Mdann52 bot 15|Task 15]] - deleting templates AMQ/FMQ per [[Wikipedia:Templates for discussion/Log/2024 May 26#Template:AMQ|TFDs]]", minor=False)
 
             time.sleep(60)
 
