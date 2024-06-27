@@ -39,12 +39,11 @@ def run_bot():
     repo = wikidata.data_repository()
 
     for item in TEMPLATES:
-        #template = pywikibot.Page(pywikibot.Link(item,
-        #                                default_namespace=10,
-        #                                source=enwiki))
+        template = pywikibot.Page(pywikibot.Link(item,
+                                        default_namespace=10,
+                                        source=enwiki))
     
-        #transclusions = template.getReferences(only_template_inclusion=True)
-        transclusions = pywikibot.pagegenerators.PagesFromPageidGenerator(["220587"])
+        transclusions = template.getReferences(only_template_inclusion=True)
 
         for page in transclusions:
             if edits == 49:
@@ -146,8 +145,7 @@ def run_bot():
             logger.info("Finished processing %s", page.title())
             if str(wikitext) != page:
                 page.text = str(wikitext)
-                #page.save(summary="[[Wikipedia:Bots/Requests for approval/Mdann52 bot 15|Task 15]] - deleting templates AMQ/FMQ per [[Wikipedia:Templates for discussion/Log/2024 May 26#Template:AMQ|TFDs]]", minor=False)
-                print(page.text[-1000:])
+                page.save(summary="[[Wikipedia:Bots/Requests for approval/Mdann52 bot 15|Task 15]] - deleting templates AMQ/FMQ per [[Wikipedia:Templates for discussion/Log/2024 May 26#Template:AMQ|TFDs]]", minor=False)
             time.sleep(60)
 
 
