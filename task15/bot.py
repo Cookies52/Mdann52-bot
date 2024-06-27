@@ -3,6 +3,7 @@ from pywikibot import pagegenerators
 import os
 import logging
 import datetime
+import pywikibot.pagegenerators
 import requests
 import time
 from collections import OrderedDict
@@ -38,11 +39,12 @@ def run_bot():
     repo = wikidata.data_repository()
 
     for item in TEMPLATES:
-        template = pywikibot.Page(pywikibot.Link(item,
-                                        default_namespace=10,
-                                        source=enwiki))
+        #template = pywikibot.Page(pywikibot.Link(item,
+        #                                default_namespace=10,
+        #                                source=enwiki))
     
-        transclusions = template.getReferences(only_template_inclusion=True)
+        #transclusions = template.getReferences(only_template_inclusion=True)
+        transclusions = pywikibot.pagegenerators.PagesFromPageidGenerator(["220587"])
 
         for page in transclusions:
             if edits == 49:
@@ -78,8 +80,9 @@ def run_bot():
                     if data[callsign]["message"] == "No Facility Found":
                         logger.warning("Facility %s not found!", callsign)
                         # Handle as an external link as well
-                        if wikitext.contains("*"+str(item)):
-                            wikitext = mwparserfromhell.parse(re.sub(r"\*[ ]*"+re.escape(str(item))+"\n", "", str(wikitext)))
+                        print(item)
+                        if wikitext.contains("*"+str(item)) or wikitext.contains("* "+str(item)):
+                            wikitext = mwparserfromhell.parse(re.sub(r"\*[ ]?"+re.escape(str(item))+"\n", "", str(wikitext)))
                         if wikitext.contains(item):
                             wikitext = mwparserfromhell.parse(re.sub(re.escape(str(item))+"\n", "", str(wikitext)))
                         continue
@@ -112,7 +115,7 @@ def run_bot():
                     else:
                         logger.warning("Unknown Template found : %s", new_template)
 
-                    wikitext.replace(str(item), new_template)
+                    wikitext.replace(item, new_template)
                     item = mwparserfromhell.parse(new_template)
 
             # Update Wikidata using values from FCC API
@@ -143,8 +146,8 @@ def run_bot():
             logger.info("Finished processing %s", page.title())
             if str(wikitext) != page:
                 page.text = str(wikitext)
-                page.save(summary="[[Wikipedia:Bots/Requests for approval/Mdann52 bot 15|Task 15]] - deleting templates AMQ/FMQ per [[Wikipedia:Templates for discussion/Log/2024 May 26#Template:AMQ|TFDs]]", minor=False)
-
+                #page.save(summary="[[Wikipedia:Bots/Requests for approval/Mdann52 bot 15|Task 15]] - deleting templates AMQ/FMQ per [[Wikipedia:Templates for discussion/Log/2024 May 26#Template:AMQ|TFDs]]", minor=False)
+                print(page.text[-1000:])
             time.sleep(60)
 
 
