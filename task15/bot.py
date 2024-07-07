@@ -11,6 +11,7 @@ import mwparserfromhell
 from requests.adapters import HTTPAdapter, Retry
 import re
 import csv
+import sys
 
 s = requests.Session()
 
@@ -75,8 +76,8 @@ def run_bot():
             fccId = []
 
             for item in templates:
-                if item.name in TEMPLATES:
-                    name = item.name
+                if item.name.strip() in TEMPLATES:
+                    name = item.name.strip()
                     callsign = str(item.get(1).value)
                     if re.match(r"[0-9]", callsign[0]) is not None:
                         continue
@@ -145,6 +146,47 @@ def run_bot():
                     if wikitext.contains(item):
                         wikitext.replace(item, new_template)
                     item = mwparserfromhell.parse(new_template)
+
+                elif item.name.strip() == "RadioTranslators":
+                    if item.has("call1"):
+                        cs = item.get("call1").value.strip()
+                        if cs in callsign_data:
+                            item.add("fid1", callsign_data[cs]["facility_id"])
+                    if item.has("call2"):
+                        cs = item.get("call2").value.strip()
+                        if cs in callsign_data:
+                            item.add("fid2", callsign_data[cs]["facility_id"])
+                    if item.has("call3"):
+                        cs = item.get("call3").value.strip()
+                        print(cs)
+                        if cs in callsign_data:
+                            item.add("fid3", callsign_data[cs]["facility_id"])
+                    if item.has("call4"):
+                        cs = item.get("call4").value.strip()
+                        if cs in callsign_data:
+                            item.add("fid4", callsign_data[cs]["facility_id"])
+                    if item.has("call5"):
+                        cs = item.get("call5").value.strip()
+                        if cs in callsign_data:
+                            item.add("fid5", callsign_data[cs]["facility_id"])
+                    if item.has("call6"):
+                        cs = item.get("call6").value.strip()
+                        print(cs)
+                        if cs in callsign_data:
+                            item.add("fid6", callsign_data[cs]["facility_id"])
+                    if item.has("call7"):
+                        cs = item.get("call7").value.strip()
+                        if cs in callsign_data:
+                            item.add("fid7", callsign_data[cs]["facility_id"])
+                    if item.has("call8"):
+                        cs = item.get("call8").value.strip()
+                        if cs in callsign_data:
+                            item.add("fid8", callsign_data[cs]["facility_id"])
+                    if item.has("call9"):
+                        cs = item.get("call9").value.strip()
+                        print(cs)
+                        if cs in callsign_data:
+                            item.add("fid9", callsign_data[cs]["facility_id"])  
 
             # Update Wikidata using values from FCC API
             if Wikidata_Enabled and wikidata_item is not None:
