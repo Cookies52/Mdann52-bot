@@ -10,6 +10,7 @@ from collections import OrderedDict
 import mwparserfromhell
 from requests.adapters import HTTPAdapter, Retry
 import re
+import csv
 
 s = requests.Session()
 
@@ -30,13 +31,14 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 Wikidata_Enabled = False
 
-TEMPLATES = ["AMQ", "FMQ", "AM station data", "FM station data"]
+fm_temp = ["FMQ", "FM station data", "LPFM station data"]
+TEMPLATES = ["FMQ", "AM station data", "FM station data", "AMQ"]
 
 def run_bot():
-    edits = 3
+    edits = 0
     enwiki = pywikibot.Site("en", 'wikipedia')
     wikidata = pywikibot.Site("test", "wikidata") # ("wikidata", "wikidata")
-    repo = wikidata.data_repository()
+    #repo = wikidata.data_repository()
 
     for item in TEMPLATES:
         template = pywikibot.Page(pywikibot.Link(item,
@@ -46,17 +48,17 @@ def run_bot():
         transclusions = template.getReferences(only_template_inclusion=True)
 
         for page in transclusions:
-            if edits == 49:
+            if edits == 25:
                os.exit(0)
 
             logger.info("Processing %s", page.title())
 
             wikitext = mwparserfromhell.parse(page.text)
-            templates = wikitext.filter_templates(recursive=False)
+            templates = wikitext.filter_templates(recursive=True)
 
             data = {}
 
-            wikidata_item = pywikibot.ItemPage.fromPage(page)
+            #wikidata_item = pywikibot.ItemPage.fromPage(page)
             frequency_list = []
             fccId = []
 
@@ -64,6 +66,10 @@ def run_bot():
                 if item.name in TEMPLATES:
                     name = item.name
                     callsign = str(item.get(1).value)
+                    if re.match(r"[A-Z][0-9]{3}[A-Z]{2}", callsign) is not None:
+                        continue
+                    if re.match(r"[0-9]", callsign[0]) is not None:
+                        continue
                     logger.info("Processing callsign %s", callsign)
                     # Fetch data from the FCC site the first time we do this
                     if callsign not in data:
@@ -76,21 +82,15 @@ def run_bot():
                             logger.error("Cannot get data for %s, received error %i", callsign, res.status_code)
                             continue
 
+                    new_template = None
+
                     if data[callsign]["message"] == "No Facility Found":
                         logger.warning("Facility %s not found!", callsign)
                         # Handle as an external link as well
-                        print(item)
-                        if wikitext.contains("*"+str(item)) or wikitext.contains("* "+str(item)):
-                            wikitext = mwparserfromhell.parse(re.sub(r"\*[ ]?"+re.escape(str(item))+"\n", "", str(wikitext)))
-                        if wikitext.contains(item):
-                            wikitext = mwparserfromhell.parse(re.sub(re.escape(str(item))+"\n", "", str(wikitext)))
-                        continue
-
-                    new_template = str(item)
-                        
-                    if new_template[2:4] == "AM":
+                    else:
+                      if name[:2] == "AM" and data[callsign]["results"]["globalSearchResults"]["amResultsCount"] != 0:
                         for result in data[callsign]["results"]["globalSearchResults"]["amFacilityList"]:
-                            if result["callSign"] == callsign:
+                            if result["callSign"] == callsign or result["callSign"] == callsign+"-AM":
                                 frequency_list.append(result["frequency"])
                                 fccId = result["id"]
 
@@ -100,9 +100,9 @@ def run_bot():
                                     new_template = "{{{{FCC-LMS-Facility|{}|{}}}}}".format(result["id"], result["callSign"])
                                 break
                     
-                    elif new_template[2:4] == "FM":
+                      if name in fm_temp and data[callsign]["results"]["globalSearchResults"]["fmResultsCount"] != 0:
                         for result in data[callsign]["results"]["globalSearchResults"]["fmFacilityList"]:
-                            if result["callSign"] == callsign:
+                            if result["callSign"] == callsign or result["callSign"] == callsign+"-FM":
                                 frequency_list.append(result["frequency"])
                                 fccId = result["id"]
 
@@ -111,10 +111,22 @@ def run_bot():
                                 else:
                                     new_template = "{{{{FCC-LMS-Facility|{}|{}}}}}".format(result["id"], result["callSign"])
                                 break
-                    else:
-                        logger.warning("Unknown Template found : %s", new_template)
+                      if name[:2] not in ["FM", "AM"]:
+                        logger.warning("Unknown Template found : %s", name)
+                    if new_template is None:
+                        # If we don't find it in the db, remove the entry.
+                        if wikitext.contains("*"+str(item)) or wikitext.contains("* "+str(item)):
+                             wikitext = mwparserfromhell.parse(re.sub(r"\*[ ]?"+re.escape(str(item))+"\n", "", str(wikitext)))
+                        if wikitext.contains(item):
+                            wikitext.replace(item, None)
+                        continue
 
-                    wikitext.replace(item, new_template)
+                    new_template = mwparserfromhell.parse(new_template).get(0)
+
+                    if item.has(2):
+                        new_template.add(3, item.get(2))
+                    if wikitext.contains(item):
+                        wikitext.replace(item, new_template)
                     item = mwparserfromhell.parse(new_template)
 
             # Update Wikidata using values from FCC API
@@ -144,6 +156,7 @@ def run_bot():
             
             logger.info("Finished processing %s", page.title())
             if str(wikitext) != page:
+                edits += 1
                 page.text = str(wikitext)
                 page.save(summary="[[Wikipedia:Bots/Requests for approval/Mdann52 bot 15|Task 15]] - deleting templates AMQ/FMQ per [[Wikipedia:Templates for discussion/Log/2024 May 26#Template:AMQ|TFDs]]", minor=False)
             time.sleep(60)
