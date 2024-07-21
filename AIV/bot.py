@@ -4,6 +4,7 @@ import mwparserfromhell
 import ipaddress
 import pywikibot.logentries
 import pywikibot.pagegenerators
+import traceback
 
 pages_to_watch = [
    'Wikipedia:Administrator intervention against vandalism',
@@ -93,26 +94,39 @@ while True:
                             for block in block_info:
                                 if 'anononly' in block:
                                     anon_only = True
+                                if "partial" not in block:
+                                    partialBlock = False
                         else:
                             block_info = enwiki.blocks(users=username)
-                        for b in block_info:
-                            if "partial" not in b:
-                                partialBlock = False
-                        if partialBlock:
-                            continue
+                            for block in block_info:
+                                if "partial" not in block:
+                                    partialBlock = False
+
                         counter = idx
                         while counter < len(lines):
                             if lines[counter] == "":
                                 counter += 1
 
-                            if lines[counter] == f or lines[counter][0:2] == "*:" or lines[counter][0] == ":":
+                            elif lines[counter] == f:
+                                if counter != len(lines) - 1 and lines[counter+1] == "*":
+                                    if counter + 2 < len(lines):
+                                        content.remove(lines[counter]+"\n*\n")
+                                    elif counter + 1 < len(lines):
+                                        content.remove(lines[counter] + "\n*")
+                                    counter += 2
+                                elif counter == len(lines) - 1:
+                                    content.remove(f)
+                                    break
+                                else:
+                                    content.remove(f+"\n")
+                                    counter += 1                            
+
+                            elif lines[counter][0:1] == "*:" or lines[counter][0] == ":":
                                 if counter == len(lines)-1:
                                     content.remove(lines[counter])
+                                    break
                                 else:
                                     content.remove(lines[counter]+"\n")
-                                counter += 1
-                            elif lines[counter] == "*\n":
-                                content.remove(lines[counter])
                                 counter += 1
                             else:
                                 break
@@ -166,7 +180,8 @@ while True:
                         page.text = content
                         page.save(summary=str(vandalCount)+" reports remaining. Noticeboard is no longer backlogged ([[Wikipedia:Bots/Requests for approval/HBC AIV helperbot14|under trial]])")
         except Exception as e:
-            print(type(e).__name__, e)
+            #print(type(e).__name__, e)
+            print(traceback.print_exception(e))
             continue 
    
     time.sleep(60)
