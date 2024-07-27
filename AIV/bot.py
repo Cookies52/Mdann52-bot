@@ -85,7 +85,7 @@ while True:
                 temps = mwparserfromhell.parse(f).filter_templates()
                 v = [t for t in temps if t.name.lower() in ["vandal", "ipvandal", "user-uaa"]]
                 for t in v:
-                    username = str(t.get("1"))
+                    username = str(t.get("1")).strip()
                     if username[0:2] == "1=":
                         username = username[2:]
 
@@ -99,7 +99,7 @@ while True:
                                 content.replace(f, f+"<!--marked-->\n:*'''Note:''' "+special_ips[username] + ". ~~~~")
                                 page.text = content
                                 logging.info("Marking %s as a sensitive IP", username)
-                                page.save(minor=False, summary=str(vandalCount)+" reports remaining. Commenting on " + username + " : Sensitive IP ([[Wikipedia:Bots/Requests for approval/HBC AIV helperbot14|under trial]])")
+                                page.save(minor=False, summary=str(vandalCount)+" reports remaining. Commenting on " + username + " : Sensitive IP")
                                 break
                         # Get user categories
                         for cat in userInfo.categories():
@@ -107,10 +107,15 @@ while True:
                                 content.replace(f, f+"<!--marked-->\n:*'''Note:''' User is in the category: "+ cat + ". ~~~~")
                                 page.text = content
                                 logging.info("Marking %s as belonging to an important category", username)
-                                page.save(minor=False, summary=str(vandalCount)+" reports remaining. Commenting on " + username + " : User is in the category " + cat +  "([[Wikipedia:Bots/Requests for approval/HBC AIV helperbot14|under trial]])")
+                                page.save(minor=False, summary=str(vandalCount)+" reports remaining. Commenting on " + username + " : User is in the category " + cat)
                                 break
-
-                    if userInfo.is_blocked() or (not userInfo.isAnonymous() and userInfo.is_locked()):
+                    isLocked = False
+                    if not userInfo.isAnonymous():
+                       try:
+                          isLocked = userInfo.is_locked()
+                       except Exception:
+                          isLocked = False
+                    if userInfo.is_blocked() or isLocked:
                         anon_only = False
                         props = userInfo.getprops()
                         block_info=None
@@ -151,7 +156,7 @@ while True:
                                     counter += 1
                                     logging.info("Removing entry for user %s, continuing checks", username)            
 
-                            elif lines[counter][0:2] == "*:" or lines[counter][0] == ":":
+                            elif lines[counter][0:2] == "*:" or lines[counter][0:2] == "**" or lines[counter][0] == ":":
                                 if counter == len(lines)-1:
                                     content.remove(lines[counter])
                                     logging.info("Removing comment for user %s at end of page", username)
@@ -184,7 +189,6 @@ while True:
 
                         if len(flags) != 0:
                             summary += " ([[User:HBC AIV helperbot/Legend|" + " ".join(flags) + "]])"
-                        summary += " ([[Wikipedia:Bots/Requests for approval/HBC AIV helperbot14|under trial]])"
                         logging.info('Saving with summary "%s"', summary)
                         page.text = content
                         page.save(summary=summary, minor=False)
@@ -205,7 +209,7 @@ while True:
                             newt.add("bot", "HBC AIV helperbot14")
                             content.replace(t, newt)
                             page.text = content
-                            page.save(summary=str(vandalCount)+" reports remaining. Noticeboard is backlogged ([[Wikipedia:Bots/Requests for approval/HBC AIV helperbot14|under trial]])")
+                            page.save(summary=str(vandalCount)+" reports remaining.")
                     if t.name == "adminbacklog":
                         if vandalCount <= RemoveLimit:
                             logging.info("Marking %s as unbacklogged", page.title())
@@ -213,9 +217,10 @@ while True:
                             newt.add("bot", "HBC AIV helperbot14")
                             content.replace(t, newt)
                             page.text = content
-                            page.save(summary=str(vandalCount)+" reports remaining. Noticeboard is no longer backlogged ([[Wikipedia:Bots/Requests for approval/HBC AIV helperbot14|under trial]])")
+                            page.save(summary=str(vandalCount)+" reports remaining. Noticeboard is no longer backlogged")
         except Exception as e:
             logging.exception(e)
+            print(e)
             continue 
    
     time.sleep(60 * 5) # wait 5 mins between runs

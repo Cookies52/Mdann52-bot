@@ -33,7 +33,7 @@ logging.getLogger().addHandler(logging.StreamHandler())
 Wikidata_Enabled = False
 
 fm_temp = ["FMQ", "FM station data", "LPFM station data"]
-TEMPLATES = ["FMQ", "AM station data", "FM station data", "AMQ"]
+TEMPLATES = ["FMQ", "AM station data", "FM station data", "AMQ", "Aminfo"]
 
 def run_bot():
     edits = 0
@@ -58,7 +58,7 @@ def run_bot():
                                         default_namespace=10,
                                         source=enwiki))
     
-        transclusions = template.getReferences(only_template_inclusion=True, namespaces=[0])
+        transclusions = template.getReferences(only_template_inclusion=True, namespaces=[0,2,118])
 
         for page in transclusions:
             try:
