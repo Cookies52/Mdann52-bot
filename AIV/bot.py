@@ -77,7 +77,7 @@ while True:
             AddLimit = int(settings.group(6))
             RemoveLimit = int(settings.group(7))
 
-            logger.info("Updated Settings for %s: %s,%s,%s,%s,%s,%s,%s", page.title(), RemovedBlocked, MergeDuplicates, AutoMark, FixInstructions, AutoBacklog, AddLimit,
+            logger.debug("Updated Settings for %s: %s,%s,%s,%s,%s,%s,%s", page.title(), RemovedBlocked, MergeDuplicates, AutoMark, FixInstructions, AutoBacklog, AddLimit,
                         RemoveLimit)
             lines = page.text.split("\n")
 
@@ -132,6 +132,9 @@ while True:
                             for block in block_info:
                                 if "partial" not in block:
                                     partialBlock = False
+
+                        if partialBlock:
+                           continue
 
                         counter = idx
                         while RemovedBlocked and counter < len(lines):
@@ -209,7 +212,7 @@ while True:
                             newt.add("bot", "HBC AIV helperbot14")
                             content.replace(t, newt)
                             page.text = content
-                            page.save(summary=str(vandalCount)+" reports remaining.")
+                            page.save(summary=str(vandalCount)+" reports remaining. Tagging noticeboard as backlogged")
                     if t.name == "adminbacklog":
                         if vandalCount <= RemoveLimit:
                             logging.info("Marking %s as unbacklogged", page.title())
